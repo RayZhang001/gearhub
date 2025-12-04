@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gear Command Center</title>
+    <title>Gear Hub</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -74,9 +74,18 @@
 
     <nav class="border-b border-white/10 bg-black/80 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-2 h-8 bg-sony-orange"></div>
-                <h1 class="text-xl font-bold tracking-tight text-white font-mono">COMMAND<span class="text-sony-orange">CENTER</span> // <span class="text-gray-500 text-sm">RUI.DB</span></h1>
+            <div class="flex items-center gap-3 group cursor-default">
+                <div class="w-10 h-10 rounded bg-gray-900 border border-gray-700 flex items-center justify-center group-hover:border-sony-orange transition-colors shadow-lg relative overflow-hidden">
+                    <div class="absolute inset-0 bg-sony-orange opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                    <i class="fa-solid fa-camera-retro text-sony-orange text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-widest text-white font-mono leading-none">GEAR<span class="font-light text-gray-400">HUB</span></h1>
+                    <div class="flex items-center gap-2 mt-1">
+                        <div class="h-0.5 w-3 bg-sony-orange"></div>
+                        <span class="text-[9px] text-gray-500 font-mono tracking-[0.3em] uppercase">Database</span>
+                    </div>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <button onclick="clearCache()" class="text-xs text-red-500 hover:text-red-400 border border-red-900/50 px-2 py-1 rounded" title="Reload File"><i class="fa-solid fa-rotate-right"></i></button>
@@ -317,6 +326,7 @@
         }
 
         // --- FILTER SYSTEM ---
+        let activeCategory = 'Optics';
         let activeFilters = {
             types: new Set(),
             focalGroups: new Set(),
@@ -324,27 +334,71 @@
             mounts: new Set()
         };
 
-        function getLensTags(item) {
-            if (item.type === 'Body') return { isBody: true, focalGroup: 'Body', typeGroup: 'Body', filterSize: 'N/A', mount: item.mount };
+        function switchCategory(cat) {
+            activeCategory = cat;
+            clearFilters(); 
             
-            // Focal Group Logic
-            let focalGroup = 'Standard';
-            let minMm = 0, maxMm = 0;
-            const clean = item.focalLength.replace(/mm/g,'').trim();
-            if(clean.includes('-')) { 
-                [minMm, maxMm] = clean.split('-').map(Number); 
-            } else { 
-                minMm = maxMm = Number(clean); 
+            // Update Tabs
+            ['Optics', 'Lighting', 'Accessories'].forEach(c => {
+                const btn = document.getElementById(`tab-${c}`);
+                if(c === cat) {
+                    btn.classList.remove('border-transparent', 'text-gray-500');
+                    btn.classList.add('border-sony-orange', 'text-sony-orange');
+                } else {
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                    btn.classList.remove('border-sony-orange', 'text-sony-orange');
+                }
+            });
+
+            // Toggle FOV Simulator
+            const fovContainer = document.getElementById('fov-container');
+            if(cat === 'Optics') {
+                fovContainer.classList.remove('hidden', 'lg:hidden');
+                fovContainer.parentElement.classList.add('lg:grid-cols-3');
+            } else {
+                fovContainer.classList.add('hidden', 'lg:hidden');
+                fovContainer.parentElement.classList.remove('lg:grid-cols-3');
             }
             
-            if (maxMm <= 35) focalGroup = 'Wide Angle';
-            else if (minMm >= 70) focalGroup = 'Telephoto';
+            renderApp();
+        }
+
+        function getLensTags(item) {
+            const cat = item.category || 'Optics';
             
-            // Type Group Logic
+            if (cat !== activeCategory) return { isVisible: false };
+
+            if (item.type === 'Body') return { isVisible: true, isBody: true, focalGroup: 'Body', typeGroup: 'Body', filterSize: 'N/A', mount: item.mount };
+            
+            if (cat !== 'Optics') {
+                return {
+                    isVisible: true,
+                    isBody: false,
+                    typeGroup: item.type, 
+                    mount: item.mount,
+                    filterSize: item.filterSize
+                };
+            }
+
+            let focalGroup = 'Standard';
+            let minMm = 0, maxMm = 0;
+            const clean = (item.focalLength || '').replace(/mm/g,'').trim();
+            if(clean) {
+                if(clean.includes('-')) { 
+                    [minMm, maxMm] = clean.split('-').map(Number); 
+                } else { 
+                    minMm = maxMm = Number(clean); 
+                }
+                
+                if (maxMm <= 35) focalGroup = 'Wide Angle';
+                else if (minMm >= 70) focalGroup = 'Telephoto';
+            }
+            
             let typeGroup = 'Prime';
-            if (item.type.includes('Zoom')) typeGroup = 'Zoom';
+            if ((item.type || '').includes('Zoom')) typeGroup = 'Zoom';
 
             return {
+                isVisible: true,
                 isBody: false,
                 focalGroup,
                 typeGroup,
@@ -373,13 +427,12 @@
         function renderFilters() {
             const container = document.getElementById('filter-container');
             const clearBtn = document.getElementById('clear-filters-btn');
-            
-            // Check if any filters are active to show Clear button
+            document.getElementById('filter-title').innerText = activeCategory.toUpperCase();
+
             const hasActive = Object.values(activeFilters).some(s => s.size > 0);
             if(hasActive) clearBtn.classList.remove('hidden');
             else clearBtn.classList.add('hidden');
 
-            // Aggregation
             const options = {
                 types: new Set(),
                 focalGroups: new Set(),
@@ -389,18 +442,17 @@
 
             gearList.forEach(item => {
                 const tags = getLensTags(item);
-                if (!tags.isBody) {
-                    options.types.add(tags.typeGroup);
-                    options.focalGroups.add(tags.focalGroup);
-                    if(tags.filterSize && tags.filterSize !== 'N/A') options.filterSizes.add(tags.filterSize);
-                }
+                if (!tags.isVisible) return;
+
+                if(tags.typeGroup) options.types.add(tags.typeGroup);
+                if(tags.focalGroup) options.focalGroups.add(tags.focalGroup);
+                if(tags.filterSize && tags.filterSize !== 'N/A') options.filterSizes.add(tags.filterSize);
                 if(tags.mount) options.mounts.add(tags.mount);
             });
 
             const createSection = (title, category, items) => {
                 if(items.length === 0) return '';
                 const sortedItems = items.sort((a,b) => {
-                    // Numeric sort for filter sizes
                     if(category === 'filterSizes') return parseInt(a) - parseInt(b);
                     return a.localeCompare(b);
                 });
@@ -423,10 +475,10 @@
             };
 
             container.innerHTML = [
-                createSection('Lens Type', 'types', Array.from(options.types)),
-                createSection('Focal Field', 'focalGroups', Array.from(options.focalGroups)),
-                createSection('Filter Thread', 'filterSizes', Array.from(options.filterSizes)),
-                createSection('System Mount', 'mounts', Array.from(options.mounts))
+                createSection('Type', 'types', Array.from(options.types)),
+                activeCategory === 'Optics' ? createSection('Focal Field', 'focalGroups', Array.from(options.focalGroups)) : '',
+                createSection('Filter / Size', 'filterSizes', Array.from(options.filterSizes)),
+                createSection('System / Mount', 'mounts', Array.from(options.mounts))
             ].join('');
         }
 
@@ -435,53 +487,40 @@
             const grid = document.getElementById('lens-grid');
             grid.innerHTML = '';
             
-            // 1. Identify active Camera Body
             let activeBody = null;
             loadoutSet.forEach(idx => {
                 if(gearList[idx].type === 'Body') activeBody = gearList[idx];
             });
 
-            // Update UI for Active Body
             const bodyDisplay = document.getElementById('active-body-name');
             bodyDisplay.innerText = activeBody ? activeBody.name : 'NONE';
             if(activeBody) bodyDisplay.classList.add('text-sony-orange');
             else bodyDisplay.classList.remove('text-sony-orange');
 
-            gearList.forEach((item, index) => {
-                // FILTERING LOGIC
-                const tags = getLensTags(item);
-                
-                // 1. Mount Filter
-                if (activeFilters.mounts.size > 0 && !activeFilters.mounts.has(tags.mount)) return;
+            const filteredItems = gearList.map((item, index) => ({...item, originalIndex: index}))
+                .filter(item => {
+                    const tags = getLensTags(item);
+                    if(!tags.isVisible) return false;
 
-                if (!tags.isBody) {
-                    // 2. Lens Type Filter (Zoom/Prime)
-                    if (activeFilters.types.size > 0 && !activeFilters.types.has(tags.typeGroup)) return;
-                    // 3. Focal Group Filter (Wide/Tele)
-                    if (activeFilters.focalGroups.size > 0 && !activeFilters.focalGroups.has(tags.focalGroup)) return;
-                    // 4. Filter Size
-                    if (activeFilters.filterSizes.size > 0 && !activeFilters.filterSizes.has(tags.filterSize)) return;
-                } else {
-                    // If it is a body, we generally show it unless filters specifically exclude "Body" 
-                    // But our filters are lens-centric. 
-                    // If user selects "Prime", hiding bodies makes sense? 
-                    // Usually yes, if I'm looking for Primes, I don't want Bodies.
-                    if (activeFilters.types.size > 0 || activeFilters.focalGroups.size > 0 || activeFilters.filterSizes.size > 0) return;
-                }
+                    if (activeFilters.mounts.size > 0 && !activeFilters.mounts.has(tags.mount)) return false;
+                    if (activeFilters.types.size > 0 && !activeFilters.types.has(tags.typeGroup)) return false;
+                    if (activeFilters.focalGroups.size > 0 && !activeFilters.focalGroups.has(tags.focalGroup)) return false;
+                    if (activeFilters.filterSizes.size > 0 && !activeFilters.filterSizes.has(tags.filterSize)) return false;
+                    return true;
+                });
 
+            filteredItems.forEach((item) => {
+                const index = item.originalIndex;
                 const isSelected = loadoutSet.has(index);
                 
-                // 2. Compatibility Check Logic
-                let compatStatus = 'ok'; // ok, incompatible, crop
+                let compatStatus = 'ok'; 
                 let warningMsg = '';
 
-                if (activeBody && item.type !== 'Body') {
-                    // Check Mount
+                if (activeCategory === 'Optics' && activeBody && item.type !== 'Body') {
                     if (item.mount && item.mount !== activeBody.mount) {
                         compatStatus = 'incompatible';
                         warningMsg = 'INCOMPATIBLE MOUNT';
                     }
-                    // Check Crop (Full Frame Body + APS-C Lens)
                     else if (activeBody.sensorFormat === 'Full Frame' && item.sensorFormat === 'APS-C') {
                         compatStatus = 'crop';
                         warningMsg = 'APS-C CROP MODE';
@@ -490,7 +529,6 @@
 
                 const card = document.createElement('div');
                 card.id = `card-${index}`;
-                // If incompatible, prevent click
                 if(compatStatus !== 'incompatible') card.onclick = () => toggleLoadout(index);
                 
                 let classes = `glass-panel lens-card rounded-xl overflow-hidden flex flex-col h-full border border-gray-800 relative group cursor-pointer ${isSelected ? 'border-sony-orange' : ''}`;
@@ -499,7 +537,6 @@
 
                 card.className = classes;
 
-                // Warning Overlay
                 let overlay = '';
                 if(warningMsg) {
                     const color = compatStatus === 'incompatible' ? 'bg-red-600' : 'bg-yellow-600 text-black';
@@ -516,17 +553,29 @@
                     </div>
                 `;
 
-                // NEW SPEC GRID (4 COLUMNS)
-                const specs = `
-                    <div class="mt-auto grid grid-cols-4 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
-                         <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-camera-retro mb-1 text-sony-orange"></i>${item.mount || '-'}</div>
-                         <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-shutter-image mb-1 text-gray-600"></i>${item.aperture}</div>
-                         <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-mountain-sun mb-1 text-gray-600"></i>${item.minFocus || '-'}</div>
-                         <div class="flex flex-col items-center"><i class="fa-solid fa-magnifying-glass-plus mb-1 text-gray-600"></i>${item.magnification || '-'}</div>
-                    </div>
+                let specs = '';
+                if(activeCategory === 'Optics') {
+                    specs = `
+                        <div class="mt-auto grid grid-cols-4 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
+                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-camera-retro mb-1 text-sony-orange"></i>${item.mount || '-'}</div>
+                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-shutter-image mb-1 text-gray-600"></i>${item.aperture}</div>
+                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-mountain-sun mb-1 text-gray-600"></i>${item.minFocus || '-'}</div>
+                             <div class="flex flex-col items-center"><i class="fa-solid fa-magnifying-glass-plus mb-1 text-gray-600"></i>${item.magnification || '-'}</div>
+                        </div>
+                    `;
+                } else {
+                    specs = `
+                        <div class="mt-auto grid grid-cols-2 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
+                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-copyright mb-1 text-sony-orange"></i>${item.mount || 'Univ.'}</div>
+                             <div class="flex flex-col items-center"><i class="fa-solid fa-circle-notch mb-1 text-gray-600"></i>${item.filterSize || '-'}</div>
+                        </div>
+                    `;
+                }
+                
+                specs += `
                     <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800/50">
-                        <span class="text-[10px] text-gray-500 font-mono">${item.weight}</span>
-                        <a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-sony-orange hover:text-white flex items-center gap-1 font-bold z-20">SPECS <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                        <span class="text-[10px] text-gray-500 font-mono">${item.weight || ''}</span>
+                        ${item.link ? `<a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-sony-orange hover:text-white flex items-center gap-1 font-bold z-20">SPECS <i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
                     </div>
                 `;
 
@@ -534,7 +583,7 @@
                     ${toolbar}
                     ${overlay}
                     <div class="h-36 bg-white/5 p-4 flex items-center justify-center relative">
-                        <img src="${item.image}" class="max-h-full max-w-full object-contain filter drop-shadow-lg group-hover:scale-110 transition duration-500">
+                        <img src="${item.image || 'https://via.placeholder.com/300x200?text=No+Image'}" class="max-h-full max-w-full object-contain filter drop-shadow-lg group-hover:scale-110 transition duration-500">
                     </div>
                     <div class="p-3 flex-grow flex flex-col">
                         <div class="flex justify-between items-center mb-1">
@@ -547,16 +596,21 @@
                 `;
                 grid.appendChild(card);
             });
-            renderFilters(); // Re-render filters to update visual state if needed, mostly for first run or updates
+            renderFilters(); 
             updateLoadoutBar();
         }
 
         // --- STATS & MOUNT FILTER ---
         function renderStats() {
-            const total = gearList.reduce((acc, i) => acc + (Number(i.price) || 0), 0);
+            const visibleItems = gearList.filter(i => {
+                const tags = getLensTags(i);
+                return tags.isVisible;
+            });
+
+            const total = visibleItems.reduce((acc, i) => acc + (Number(i.price) || 0), 0);
             document.getElementById('total-value').innerText = '$' + total.toLocaleString();
-            document.getElementById('item-count').innerText = gearList.length;
-            document.getElementById('avg-value').innerText = '$' + Math.floor(total/gearList.length || 0);
+            document.getElementById('item-count').innerText = visibleItems.length;
+            document.getElementById('avg-value').innerText = '$' + Math.floor(total/visibleItems.length || 0);
         }
 
         // --- HUD LOGIC (Standard) ---
@@ -731,6 +785,7 @@
 
         function getFormData() {
             return {
+                category: document.getElementById('inp-category').value,
                 name: document.getElementById('inp-name').value,
                 type: document.getElementById('inp-type').value,
                 mount: document.getElementById('inp-mount').value,
@@ -748,6 +803,7 @@
         }
 
         function populateForm(data) {
+            document.getElementById('inp-category').value = data.category || 'Optics';
             document.getElementById('inp-name').value = data.name || '';
             document.getElementById('inp-type').value = data.type || 'Prime';
             document.getElementById('inp-mount').value = data.mount || '';
