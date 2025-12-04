@@ -6,8 +6,8 @@
     <title>Gear Hub</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
 
@@ -68,7 +68,7 @@
 <body class="min-h-screen flex flex-col" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
 
     <div id="drop-zone" class="fixed inset-0 bg-sony-orange/90 z-[60] hidden flex-col items-center justify-center pointer-events-none">
-        <i class="fa-solid fa-crosshairs text-6xl text-white mb-4 animate-spin-slow"></i>
+        <iconify-icon icon="lucide:crosshair" class="text-6xl text-white mb-4 animate-spin-slow"></iconify-icon>
         <h2 class="text-4xl font-bold text-white uppercase tracking-widest">EXIF Detective</h2>
     </div>
 
@@ -77,7 +77,7 @@
             <div class="flex items-center gap-3 group cursor-default">
                 <div class="w-10 h-10 rounded bg-gray-900 border border-gray-700 flex items-center justify-center group-hover:border-sony-orange transition-colors shadow-lg relative overflow-hidden">
                     <div class="absolute inset-0 bg-sony-orange opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                    <i class="fa-solid fa-camera-retro text-sony-orange text-lg"></i>
+                    <iconify-icon icon="lucide:camera" class="text-sony-orange text-lg"></iconify-icon>
                 </div>
                 <div>
                     <h1 class="text-xl font-black tracking-widest text-white font-mono leading-none">GEAR<span class="font-light text-gray-400">HUB</span></h1>
@@ -88,9 +88,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <button onclick="clearCache()" class="text-xs text-red-500 hover:text-red-400 border border-red-900/50 px-2 py-1 rounded" title="Reload File"><i class="fa-solid fa-rotate-right"></i></button>
-                <button onclick="openModal()" class="hover:text-sony-orange transition"><i class="fa-solid fa-plus"></i></button>
-                <button onclick="downloadJSON()" class="hover:text-sony-orange transition"><i class="fa-solid fa-download"></i></button>
+                <button onclick="clearCache()" class="text-xs text-red-500 hover:text-red-400 border border-red-900/50 px-2 py-1 rounded" title="Reload File"><iconify-icon icon="lucide:rotate-cw"></iconify-icon></button>
+                <button onclick="openModal()" class="hover:text-sony-orange transition"><iconify-icon icon="lucide:plus"></iconify-icon></button>
+                <button onclick="downloadJSON()" class="hover:text-sony-orange transition"><iconify-icon icon="lucide:download"></iconify-icon></button>
             </div>
         </div>
     </nav>
@@ -107,7 +107,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div id="fov-container" class="lg:col-span-2 bg-black/40 rounded-xl p-4 border border-gray-800 flex flex-col justify-center transition-all duration-500">
                 <div class="mb-2 flex justify-between items-end px-2">
-                    <h3 class="text-xs font-bold text-sony-orange uppercase tracking-wider font-mono"><i class="fa-solid fa-layer-group"></i> FOCAL FIELD SIMULATOR</h3>
+                    <h3 class="text-xs font-bold text-sony-orange uppercase tracking-wider font-mono"><iconify-icon icon="lucide:layers"></iconify-icon> FOCAL FIELD SIMULATOR</h3>
                     <span class="text-[10px] text-gray-500 font-mono">ASPECT [3:2] FULL FRAME</span>
                 </div>
                 <div class="w-full max-w-[600px] aspect-[3/2] mx-auto bg-black border border-gray-700 shadow-2xl overflow-hidden relative group">
@@ -131,7 +131,7 @@
                 <div class="glass-panel rounded-xl p-5">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider font-mono">
-                            <i class="fa-solid fa-filter"></i> <span id="filter-title">LIBRARY</span> FILTERS
+                            <iconify-icon icon="lucide:filter"></iconify-icon> <span id="filter-title">LIBRARY</span> FILTERS
                         </h3>
                         <button onclick="clearFilters()" class="text-[10px] text-red-500 hover:text-white uppercase font-mono hidden" id="clear-filters-btn">RESET</button>
                     </div>
@@ -147,7 +147,7 @@
     <div class="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-sony-orange/50 p-4 z-40 backdrop-blur-lg transform transition-transform duration-300 translate-y-full" id="loadout-bar">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-4">
-                <i class="fa-solid fa-suitcase-rolling text-sony-orange text-2xl"></i>
+                <iconify-icon icon="lucide:suitcase" class="text-sony-orange text-2xl"></iconify-icon>
                 <div>
                     <p class="text-xs text-gray-400 uppercase">Loadout Weight</p>
                     <p class="text-xl font-bold font-mono text-white"><span id="loadout-weight">0</span> g</p>
@@ -170,8 +170,8 @@
                     <div id="api-status-indicator" class="w-2 h-2 rounded-full bg-red-500" title="API Key Missing"></div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="toggleKeyInput()" class="text-gray-400 hover:text-white text-xs" title="Settings"><i class="fa-solid fa-gear"></i></button>
-                    <button onclick="toggleAI()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="toggleKeyInput()" class="text-gray-400 hover:text-white text-xs" title="Settings"><iconify-icon icon="lucide:settings"></iconify-icon></button>
+                    <button onclick="toggleAI()" class="text-gray-400 hover:text-white"><iconify-icon icon="lucide:x"></iconify-icon></button>
                 </div>
             </div>
             
@@ -194,32 +194,32 @@
 
             <!-- Quick Actions -->
             <div class="px-3 py-2 bg-neutral-900/50 border-t border-gray-800 flex gap-2 overflow-x-auto no-scrollbar">
-                <button onclick="triggerAction('add')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><i class="fa-solid fa-plus text-sony-orange"></i> ADD GEAR</button>
-                <button onclick="triggerAction('recommend')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><i class="fa-solid fa-lightbulb text-yellow-500"></i> RECOMMEND</button>
-                <button onclick="triggerAction('rate')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><i class="fa-solid fa-star-half-stroke text-purple-500"></i> RATE KIT</button>
+                <button onclick="triggerAction('add')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><iconify-icon icon="lucide:plus" class="text-sony-orange"></iconify-icon> ADD GEAR</button>
+                <button onclick="triggerAction('recommend')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><iconify-icon icon="lucide:lightbulb" class="text-yellow-500"></iconify-icon> RECOMMEND</button>
+                <button onclick="triggerAction('rate')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><iconify-icon icon="lucide:star-half" class="text-purple-500"></iconify-icon> RATE KIT</button>
             </div>
 
             <div class="p-3 bg-neutral-900 border-t border-gray-700">
                 <div class="flex gap-2">
                     <input type="text" id="user-prompt" placeholder="Ask about your kit..." class="flex-grow bg-black border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-sony-orange" onkeypress="if(event.key === 'Enter') askGemini()">
-                    <button onclick="askGemini()" class="text-sony-orange hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+                    <button onclick="askGemini()" class="text-sony-orange hover:text-white"><iconify-icon icon="lucide:arrow-right"></iconify-icon></button>
                 </div>
             </div>
         </div>
         <button onclick="toggleAI()" class="bg-neutral-900 border border-sony-orange text-white p-3 rounded-full shadow-lg hover:bg-sony-orange transition w-12 h-12 flex items-center justify-center group relative">
-            <i class="fa-solid fa-robot group-hover:animate-pulse"></i>
+            <iconify-icon icon="lucide:bot" class="group-hover:animate-pulse"></iconify-icon>
             <div id="ai-badge" class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-black hidden"></div>
         </button>
     </div>
 
     <div id="gear-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-lg p-6 rounded-xl border border-gray-700 relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><iconify-icon icon="lucide:x"></iconify-icon></button>
             
             <div class="flex justify-between items-center mb-6 pr-8">
                 <h2 class="text-xl font-bold text-white font-mono" id="modal-title">ADD_COMPONENT</h2>
                 <button type="button" onclick="toggleJsonMode()" class="text-[10px] text-sony-orange hover:text-white font-mono border border-gray-700 hover:border-sony-orange px-2 py-1 rounded transition" id="json-toggle-btn">
-                    <i class="fa-solid fa-code"></i> JSON MODE
+                    <iconify-icon icon="lucide:code"></iconify-icon> JSON MODE
                 </button>
             </div>
 
@@ -549,33 +549,76 @@
                             <input type="checkbox" onchange="event.stopPropagation(); toggleLoadout(${index})" ${isSelected ? 'checked' : ''} ${compatStatus === 'incompatible' ? 'disabled' : ''}
                                    class="form-checkbox h-4 w-4 text-sony-orange rounded bg-black border-gray-600 focus:ring-offset-black custom-checkbox">
                         </label>
-                        <button onclick="event.stopPropagation(); editItem(${index})" class="pointer-events-auto text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-pencil"></i></button>
+                        <button onclick="event.stopPropagation(); editItem(${index})" class="pointer-events-auto text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition"><iconify-icon icon="lucide:pencil"></iconify-icon></button>
                     </div>
                 `;
 
-                let specs = '';
-                if(activeCategory === 'Optics') {
-                    specs = `
-                        <div class="mt-auto grid grid-cols-4 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
-                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-camera-retro mb-1 text-sony-orange"></i>${item.mount || '-'}</div>
-                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-shutter-image mb-1 text-gray-600"></i>${item.aperture}</div>
-                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-mountain-sun mb-1 text-gray-600"></i>${item.minFocus || '-'}</div>
-                             <div class="flex flex-col items-center"><i class="fa-solid fa-magnifying-glass-plus mb-1 text-gray-600"></i>${item.magnification || '-'}</div>
-                        </div>
-                    `;
-                } else {
-                    specs = `
-                        <div class="mt-auto grid grid-cols-2 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
-                             <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-copyright mb-1 text-sony-orange"></i>${item.mount || 'Univ.'}</div>
-                             <div class="flex flex-col items-center"><i class="fa-solid fa-circle-notch mb-1 text-gray-600"></i>${item.filterSize || '-'}</div>
-                        </div>
-                    `;
-                }
+                                // DYNAMIC SPECS based on Category
+
+                                let specs = '';
+
+                                if(activeCategory === 'Optics') {
+
+                                    specs = `
+
+                                        <div class="mt-auto grid grid-cols-3 gap-y-2 gap-x-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
+                                            
+                                            <div class="flex flex-col items-center" title="Mount"><iconify-icon icon="fa7-solid:ring" class="mb-1 "></iconify-icon>${item.mount || '-'}
+                            
+                            </div>
+                                             <div class="flex flex-col items-center border-r border-gray-800" title="Focal Length"><iconify-icon icon="bxs:ruler" class="mb-1 text-gray-500"></iconify-icon>${item.focalLength || '-'}
+
+                </div>
+
+                                             <div class="flex flex-col items-center border-r border-gray-800" title="Aperture"><iconify-icon icon="oi:aperture" class="mb-1 text-gray-500 text-[0.6rem]"></iconify-icon>${item.aperture || '-'}
+
+                </div>
+
+
+                                             
+
+                                             <div class="flex flex-col items-center border-r border-t border-gray-800 pt-2" title="Filter Thread"><iconify-icon icon="mdi:diameter-variant" class="mb-1 text-gray-500"></iconify-icon>${item.filterSize ? item.filterSize : '-'}
+
+                </div>
+
+                                             <div class="flex flex-col items-center border-r border-t border-gray-800 pt-2" title="Min Focus"><iconify-icon icon="mdi:flower-tulip" class="mb-1 text-gray-500"></iconify-icon>${item.minFocus || '-'}
+
+                </div>
+
+                                             <div class="flex flex-col items-center border-t border-gray-800 pt-2" title="Magnification"><iconify-icon icon="mdi:magnify-plus" class="mb-1 text-gray-500"></iconify-icon>${item.magnification || '-'}
+
+                </div>
+
+                                        </div>
+
+                                    `;
+
+                                } else {
+
+                                    // Generic specs for non-optics
+
+                                    specs = `
+
+                                        <div class="mt-auto grid grid-cols-2 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
+
+                                             <div class="flex flex-col items-center border-r border-gray-800"><iconify-icon icon="lucide:copyright" class="mb-1 text-sony-orange"></iconify-icon>${item.mount || 'Univ.'}
+
+                </div>
+
+                                             <div class="flex flex-col items-center"><iconify-icon icon="lucide:ban" class="mb-1 text-gray-600"></iconify-icon>${item.filterSize || '-'}
+
+                </div>
+
+                                        </div>
+
+                                    `;
+
+                                }
                 
                 specs += `
                     <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800/50">
                         <span class="text-[10px] text-gray-500 font-mono">${item.weight || ''}</span>
-                        ${item.link ? `<a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-sony-orange hover:text-white flex items-center gap-1 font-bold z-20">SPECS <i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+                        ${item.link ? `<a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-sony-orange hover:text-white flex items-center gap-1 font-bold z-20">SPECS <iconify-icon icon="lucide:external-link"></iconify-icon></a>` : ''}
                     </div>
                 `;
 
@@ -763,7 +806,7 @@
                 jsonInput.value = JSON.stringify(obj, null, 4);
                 formView.classList.add('hidden');
                 jsonView.classList.remove('hidden');
-                btn.innerHTML = '<i class="fa-solid fa-list"></i> FORM VIEW';
+                btn.innerHTML = '<iconify-icon icon="lucide:list"></iconify-icon> FORM VIEW';
                 isJsonMode = true;
             } else {
                 // Switch to Form
@@ -775,7 +818,7 @@
                     }
                     formView.classList.remove('hidden');
                     jsonView.classList.add('hidden');
-                    btn.innerHTML = '<i class="fa-solid fa-code"></i> JSON MODE';
+                    btn.innerHTML = '<iconify-icon icon="lucide:code"></iconify-icon> JSON MODE';
                     isJsonMode = false;
                 } catch (e) {
                     alert("Invalid JSON. Please fix errors before switching back.");
@@ -1004,7 +1047,7 @@
                     // Clean up JSON if it has markdown code blocks
                     aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
                     aiDiv.innerHTML = `<pre class="whitespace-pre-wrap font-mono text-[10px] text-green-400 overflow-x-auto">${aiText}</pre>
-                    <button onclick='addGeneratedItem(${aiText})' class="mt-2 w-full bg-gray-700 hover:bg-green-600 text-white text-[10px] py-1 rounded font-mono transition"><i class="fa-solid fa-plus"></i> ADD TO LIBRARY</button>`;
+                    <button onclick='addGeneratedItem(${aiText})' class="mt-2 w-full bg-gray-700 hover:bg-green-600 text-white text-[10px] py-1 rounded font-mono transition"><iconify-icon icon="lucide:plus"></iconify-icon> ADD TO LIBRARY</button>`;
                 } else {
                     // Stream Text Effect
                     await streamText(aiDiv, aiText);
