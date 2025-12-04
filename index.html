@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gear Command Center</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        'sony-orange': '#D44500',
+                        'incompatible': '#333333',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #050505; color: #e5e5e5; background-image: radial-gradient(#151515 1px, transparent 1px); background-size: 20px 20px; }
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        .lens-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .lens-card:hover { border-color: #D44500; transform: translateY(-4px); }
+        
+        /* Compatibility States */
+        .lens-card.state-incompatible {
+            opacity: 0.3;
+            filter: grayscale(100%);
+            pointer-events: none; /* Disable clicking */
+            border-color: #333;
+        }
+        .lens-card.state-crop {
+            border-color: #FFD700; /* Gold */
+        }
+
+        .lens-card.active-pulse {
+            animation: pulse-orange 2s infinite;
+            border-color: #D44500;
+            box-shadow: 0 0 20px rgba(212, 69, 0, 0.4);
+        }
+        @keyframes pulse-orange {
+            0% { box-shadow: 0 0 0 0 rgba(212, 69, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(212, 69, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(212, 69, 0, 0); }
+        }
+        .custom-checkbox:checked { background-color: #D44500; border-color: #D44500; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+
+    <div id="drop-zone" class="fixed inset-0 bg-sony-orange/90 z-[60] hidden flex-col items-center justify-center pointer-events-none">
+        <i class="fa-solid fa-crosshairs text-6xl text-white mb-4 animate-spin-slow"></i>
+        <h2 class="text-4xl font-bold text-white uppercase tracking-widest">EXIF Detective</h2>
+    </div>
+
+    <nav class="border-b border-white/10 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-8 bg-sony-orange"></div>
+                <h1 class="text-xl font-bold tracking-tight text-white font-mono">COMMAND<span class="text-sony-orange">CENTER</span> // <span class="text-gray-500 text-sm">RUI.DB</span></h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="clearCache()" class="text-xs text-red-500 hover:text-red-400 border border-red-900/50 px-2 py-1 rounded" title="Reload File"><i class="fa-solid fa-rotate-right"></i></button>
+                <button onclick="openModal()" class="hover:text-sony-orange transition"><i class="fa-solid fa-plus"></i></button>
+                <button onclick="downloadJSON()" class="hover:text-sony-orange transition"><i class="fa-solid fa-download"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full space-y-6">
+        
+        <!-- CATEGORY TABS -->
+        <div class="flex border-b border-gray-800 mb-2 overflow-x-auto no-scrollbar">
+            <button onclick="switchCategory('Optics')" id="tab-Optics" class="px-6 py-3 text-sm font-mono font-bold border-b-2 transition-colors text-sony-orange border-sony-orange">OPTICS</button>
+            <button onclick="switchCategory('Lighting')" id="tab-Lighting" class="px-6 py-3 text-sm font-mono font-bold border-b-2 border-transparent text-gray-500 hover:text-white transition-colors">LIGHTING</button>
+            <button onclick="switchCategory('Accessories')" id="tab-Accessories" class="px-6 py-3 text-sm font-mono font-bold border-b-2 border-transparent text-gray-500 hover:text-white transition-colors">ACCESSORIES</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div id="fov-container" class="lg:col-span-2 bg-black/40 rounded-xl p-4 border border-gray-800 flex flex-col justify-center transition-all duration-500">
+                <div class="mb-2 flex justify-between items-end px-2">
+                    <h3 class="text-xs font-bold text-sony-orange uppercase tracking-wider font-mono"><i class="fa-solid fa-layer-group"></i> FOCAL FIELD SIMULATOR</h3>
+                    <span class="text-[10px] text-gray-500 font-mono">ASPECT [3:2] FULL FRAME</span>
+                </div>
+                <div class="w-full max-w-[600px] aspect-[3/2] mx-auto bg-black border border-gray-700 shadow-2xl overflow-hidden relative group">
+                    <div class="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_19px,rgba(255,255,255,0.05)_20px)] pointer-events-none opacity-20"></div>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30"><div class="w-full h-[1px] bg-white"></div></div>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30"><div class="h-full w-[1px] bg-white"></div></div>
+                    <canvas id="fovCanvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <div class="space-y-6 lg:col-span-1 w-full">
+                <div class="glass-panel rounded-xl p-5 border-l-4 border-sony-orange">
+                    <p class="text-xs text-gray-500 uppercase font-mono mb-1">Total Asset Value</p>
+                    <h2 class="text-3xl font-bold text-white font-mono" id="total-value">$0.00</h2>
+                    <div class="mt-2 text-xs text-gray-400 flex justify-between">
+                        <span>Items: <span id="item-count" class="text-white">0</span></span>
+                        <span>Avg: <span id="avg-value" class="text-white">$0</span></span>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider font-mono">
+                            <i class="fa-solid fa-filter"></i> <span id="filter-title">LIBRARY</span> FILTERS
+                        </h3>
+                        <button onclick="clearFilters()" class="text-[10px] text-red-500 hover:text-white uppercase font-mono hidden" id="clear-filters-btn">RESET</button>
+                    </div>
+                    <div id="filter-container" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="lens-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-24"></div>
+
+    </main>
+
+    <div class="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-sony-orange/50 p-4 z-40 backdrop-blur-lg transform transition-transform duration-300 translate-y-full" id="loadout-bar">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <i class="fa-solid fa-suitcase-rolling text-sony-orange text-2xl"></i>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase">Loadout Weight</p>
+                    <p class="text-xl font-bold font-mono text-white"><span id="loadout-weight">0</span> g</p>
+                </div>
+                <div id="active-body-display" class="hidden md:block ml-4 px-3 py-1 bg-gray-800 rounded text-xs font-mono border border-gray-600">
+                    <span class="text-gray-500">BODY:</span> <span id="active-body-name" class="text-white font-bold">NONE</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="clearLoadout()" class="text-xs text-red-500 hover:text-white underline">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-24 right-6 z-40 flex flex-col items-end">
+        <div id="ai-chat-window" class="hidden w-80 md:w-96 glass-panel rounded-xl shadow-2xl overflow-hidden mb-4 border border-gray-700 flex flex-col h-[500px]">
+            <div class="bg-neutral-900 p-3 flex justify-between items-center border-b border-gray-700">
+                <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs text-sony-orange">AI_ASSISTANT v2.0</span>
+                    <div id="api-status-indicator" class="w-2 h-2 rounded-full bg-red-500" title="API Key Missing"></div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleKeyInput()" class="text-gray-400 hover:text-white text-xs" title="Settings"><i class="fa-solid fa-gear"></i></button>
+                    <button onclick="toggleAI()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            
+            <div id="ai-key-container" class="hidden p-3 bg-black border-b border-gray-800">
+                <div class="flex gap-2">
+                    <input type="password" id="api-key-input" placeholder="Enter Gemini API Key..." class="flex-grow bg-neutral-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-sony-orange outline-none">
+                    <button onclick="saveApiKey()" class="text-xs bg-sony-orange text-white px-2 rounded">SAVE</button>
+                </div>
+            </div>
+
+            <div id="chat-history" class="flex-grow overflow-y-auto p-4 space-y-3 bg-black/50 text-xs relative">
+                <div class="text-gray-500 italic text-[10px] text-center mt-4">Ready to analyze your gear.</div>
+                <!-- Loading Indicator -->
+                <div id="ai-loading" class="hidden absolute bottom-4 left-4 flex gap-1">
+                    <div class="w-1.5 h-1.5 bg-sony-orange rounded-full animate-bounce"></div>
+                    <div class="w-1.5 h-1.5 bg-sony-orange rounded-full animate-bounce delay-75"></div>
+                    <div class="w-1.5 h-1.5 bg-sony-orange rounded-full animate-bounce delay-150"></div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="px-3 py-2 bg-neutral-900/50 border-t border-gray-800 flex gap-2 overflow-x-auto no-scrollbar">
+                <button onclick="triggerAction('add')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><i class="fa-solid fa-plus text-sony-orange"></i> ADD GEAR</button>
+                <button onclick="triggerAction('recommend')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><i class="fa-solid fa-lightbulb text-yellow-500"></i> RECOMMEND</button>
+                <button onclick="triggerAction('rate')" class="whitespace-nowrap bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] font-mono"><i class="fa-solid fa-star-half-stroke text-purple-500"></i> RATE KIT</button>
+            </div>
+
+            <div class="p-3 bg-neutral-900 border-t border-gray-700">
+                <div class="flex gap-2">
+                    <input type="text" id="user-prompt" placeholder="Ask about your kit..." class="flex-grow bg-black border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-sony-orange" onkeypress="if(event.key === 'Enter') askGemini()">
+                    <button onclick="askGemini()" class="text-sony-orange hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+        <button onclick="toggleAI()" class="bg-neutral-900 border border-sony-orange text-white p-3 rounded-full shadow-lg hover:bg-sony-orange transition w-12 h-12 flex items-center justify-center group relative">
+            <i class="fa-solid fa-robot group-hover:animate-pulse"></i>
+            <div id="ai-badge" class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-black hidden"></div>
+        </button>
+    </div>
+
+    <div id="gear-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg p-6 rounded-xl border border-gray-700 relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="flex justify-between items-center mb-6 pr-8">
+                <h2 class="text-xl font-bold text-white font-mono" id="modal-title">ADD_COMPONENT</h2>
+                <button type="button" onclick="toggleJsonMode()" class="text-[10px] text-sony-orange hover:text-white font-mono border border-gray-700 hover:border-sony-orange px-2 py-1 rounded transition" id="json-toggle-btn">
+                    <i class="fa-solid fa-code"></i> JSON MODE
+                </button>
+            </div>
+
+            <form id="gear-form" class="space-y-3">
+                <input type="hidden" id="edit-id">
+                
+                <!-- FORM VIEW -->
+                <div id="form-view" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <select id="inp-category" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none col-span-2 text-sony-orange font-bold">
+                            <option value="Optics">Category: OPTICS (Lens/Body)</option>
+                            <option value="Lighting">Category: LIGHTING</option>
+                            <option value="Accessories">Category: ACCESSORIES</option>
+                        </select>
+
+                        <input type="text" id="inp-name" placeholder="Name" class="bg-black border border-gray-700 rounded p-2 text-sm text-white focus:border-sony-orange outline-none col-span-2" required>
+                        
+                        <select id="inp-type" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                            <option>Prime</option><option>Zoom</option><option>Tele-Zoom</option><option>Wide-Zoom</option><option>Body</option>
+                            <option>Flash</option><option>Trigger</option><option>Light</option>
+                            <option>Tripod</option><option>Filter</option><option>Bag</option><option>Storage</option><option>Other</option>
+                        </select>
+                        
+                        <input type="text" id="inp-mount" placeholder="Mount (e.g. Sony E)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        
+                        <select id="inp-format" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                            <option>Full Frame</option><option>APS-C</option><option>MFT</option>
+                        </select>
+
+                        <input type="text" id="inp-weight" placeholder="Weight (e.g. 500g)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        <input type="text" id="inp-focal" placeholder="Focal (e.g. 28-75mm)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        <input type="text" id="inp-aperture" placeholder="Aperture" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        <input type="text" id="inp-minfocus" placeholder="Min Focus (0.5m)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        <input type="text" id="inp-mag" placeholder="Magnification (0.14x)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        <input type="text" id="inp-filter" placeholder="Filter Size (67mm)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                        <input type="number" id="inp-price" placeholder="Price ($)" class="bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none col-span-2">
+                    </div>
+                    <input type="text" id="inp-image" placeholder="Image URL" class="w-full bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                    <input type="text" id="inp-link" placeholder="Official Link" class="w-full bg-black border border-gray-700 rounded p-2 text-sm text-white outline-none">
+                </div>
+
+                <!-- JSON VIEW -->
+                <div id="json-view" class="hidden">
+                    <textarea id="json-input" class="w-full h-80 bg-black border border-gray-700 rounded p-3 text-xs text-green-400 font-mono outline-none focus:border-sony-orange resize-none" spellcheck="false" placeholder="// Paste JSON object here..."></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-sony-orange hover:bg-orange-600 text-white font-bold py-2 rounded mt-2 transition font-mono">EXECUTE SAVE</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let gearList = [];
+        let loadoutSet = new Set();
+        const STORAGE_KEY = 'my_lens_db_v5';
+        const API_KEY_STORAGE = 'gemini_api_key';
+        const COLOR_PALETTE = ['#D44500', '#00FF99', '#FF00FF', '#FFFF00', '#00CCFF'];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const savedKey = localStorage.getItem(API_KEY_STORAGE);
+            if (savedKey) document.getElementById('api-key-input').value = savedKey;
+
+            try {
+                const response = await fetch('lenses.json');
+                if(response.ok) {
+                    gearList = await response.json();
+                    saveToLocal();
+                } else {
+                    const localData = localStorage.getItem(STORAGE_KEY);
+                    if (localData) gearList = JSON.parse(localData);
+                }
+            } catch (e) {
+                const localData = localStorage.getItem(STORAGE_KEY);
+                if (localData) gearList = JSON.parse(localData);
+                console.log("Offline mode");
+            }
+            renderApp();
+        });
+
+        function renderApp() {
+            renderGrid();
+            renderStats();
+            drawFOV();
+        }
+
+        function saveToLocal() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(gearList));
+            renderApp();
+        }
+
+        function clearCache() {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+
+        function downloadJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gearList, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "lenses.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // --- FILTER SYSTEM ---
+        let activeFilters = {
+            types: new Set(),
+            focalGroups: new Set(),
+            filterSizes: new Set(),
+            mounts: new Set()
+        };
+
+        function getLensTags(item) {
+            if (item.type === 'Body') return { isBody: true, focalGroup: 'Body', typeGroup: 'Body', filterSize: 'N/A', mount: item.mount };
+            
+            // Focal Group Logic
+            let focalGroup = 'Standard';
+            let minMm = 0, maxMm = 0;
+            const clean = item.focalLength.replace(/mm/g,'').trim();
+            if(clean.includes('-')) { 
+                [minMm, maxMm] = clean.split('-').map(Number); 
+            } else { 
+                minMm = maxMm = Number(clean); 
+            }
+            
+            if (maxMm <= 35) focalGroup = 'Wide Angle';
+            else if (minMm >= 70) focalGroup = 'Telephoto';
+            
+            // Type Group Logic
+            let typeGroup = 'Prime';
+            if (item.type.includes('Zoom')) typeGroup = 'Zoom';
+
+            return {
+                isBody: false,
+                focalGroup,
+                typeGroup,
+                filterSize: item.filterSize,
+                mount: item.mount
+            };
+        }
+
+        function toggleFilter(category, value) {
+            if (activeFilters[category].has(value)) {
+                activeFilters[category].delete(value);
+            } else {
+                activeFilters[category].add(value);
+            }
+            renderApp();
+        }
+
+        function clearFilters() {
+            activeFilters.types.clear();
+            activeFilters.focalGroups.clear();
+            activeFilters.filterSizes.clear();
+            activeFilters.mounts.clear();
+            renderApp();
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('filter-container');
+            const clearBtn = document.getElementById('clear-filters-btn');
+            
+            // Check if any filters are active to show Clear button
+            const hasActive = Object.values(activeFilters).some(s => s.size > 0);
+            if(hasActive) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+
+            // Aggregation
+            const options = {
+                types: new Set(),
+                focalGroups: new Set(),
+                filterSizes: new Set(),
+                mounts: new Set()
+            };
+
+            gearList.forEach(item => {
+                const tags = getLensTags(item);
+                if (!tags.isBody) {
+                    options.types.add(tags.typeGroup);
+                    options.focalGroups.add(tags.focalGroup);
+                    if(tags.filterSize && tags.filterSize !== 'N/A') options.filterSizes.add(tags.filterSize);
+                }
+                if(tags.mount) options.mounts.add(tags.mount);
+            });
+
+            const createSection = (title, category, items) => {
+                if(items.length === 0) return '';
+                const sortedItems = items.sort((a,b) => {
+                    // Numeric sort for filter sizes
+                    if(category === 'filterSizes') return parseInt(a) - parseInt(b);
+                    return a.localeCompare(b);
+                });
+                
+                return `
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono uppercase mb-2">${title}</p>
+                        <div class="flex flex-wrap gap-2">
+                            ${sortedItems.map(val => {
+                                const isActive = activeFilters[category].has(val);
+                                const bg = isActive ? 'bg-sony-orange text-white border-sony-orange' : 'bg-black text-gray-400 border-gray-700 hover:border-gray-500';
+                                return `<button onclick="toggleFilter('${category}', '${val}')" 
+                                    class="border px-2 py-1 rounded text-[10px] font-bold font-mono transition-all ${bg}">
+                                    ${val}
+                                </button>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            };
+
+            container.innerHTML = [
+                createSection('Lens Type', 'types', Array.from(options.types)),
+                createSection('Focal Field', 'focalGroups', Array.from(options.focalGroups)),
+                createSection('Filter Thread', 'filterSizes', Array.from(options.filterSizes)),
+                createSection('System Mount', 'mounts', Array.from(options.mounts))
+            ].join('');
+        }
+
+        // --- GRID LOGIC WITH SMART COMPATIBILITY ---
+        function renderGrid() {
+            const grid = document.getElementById('lens-grid');
+            grid.innerHTML = '';
+            
+            // 1. Identify active Camera Body
+            let activeBody = null;
+            loadoutSet.forEach(idx => {
+                if(gearList[idx].type === 'Body') activeBody = gearList[idx];
+            });
+
+            // Update UI for Active Body
+            const bodyDisplay = document.getElementById('active-body-name');
+            bodyDisplay.innerText = activeBody ? activeBody.name : 'NONE';
+            if(activeBody) bodyDisplay.classList.add('text-sony-orange');
+            else bodyDisplay.classList.remove('text-sony-orange');
+
+            gearList.forEach((item, index) => {
+                // FILTERING LOGIC
+                const tags = getLensTags(item);
+                
+                // 1. Mount Filter
+                if (activeFilters.mounts.size > 0 && !activeFilters.mounts.has(tags.mount)) return;
+
+                if (!tags.isBody) {
+                    // 2. Lens Type Filter (Zoom/Prime)
+                    if (activeFilters.types.size > 0 && !activeFilters.types.has(tags.typeGroup)) return;
+                    // 3. Focal Group Filter (Wide/Tele)
+                    if (activeFilters.focalGroups.size > 0 && !activeFilters.focalGroups.has(tags.focalGroup)) return;
+                    // 4. Filter Size
+                    if (activeFilters.filterSizes.size > 0 && !activeFilters.filterSizes.has(tags.filterSize)) return;
+                } else {
+                    // If it is a body, we generally show it unless filters specifically exclude "Body" 
+                    // But our filters are lens-centric. 
+                    // If user selects "Prime", hiding bodies makes sense? 
+                    // Usually yes, if I'm looking for Primes, I don't want Bodies.
+                    if (activeFilters.types.size > 0 || activeFilters.focalGroups.size > 0 || activeFilters.filterSizes.size > 0) return;
+                }
+
+                const isSelected = loadoutSet.has(index);
+                
+                // 2. Compatibility Check Logic
+                let compatStatus = 'ok'; // ok, incompatible, crop
+                let warningMsg = '';
+
+                if (activeBody && item.type !== 'Body') {
+                    // Check Mount
+                    if (item.mount && item.mount !== activeBody.mount) {
+                        compatStatus = 'incompatible';
+                        warningMsg = 'INCOMPATIBLE MOUNT';
+                    }
+                    // Check Crop (Full Frame Body + APS-C Lens)
+                    else if (activeBody.sensorFormat === 'Full Frame' && item.sensorFormat === 'APS-C') {
+                        compatStatus = 'crop';
+                        warningMsg = 'APS-C CROP MODE';
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.id = `card-${index}`;
+                // If incompatible, prevent click
+                if(compatStatus !== 'incompatible') card.onclick = () => toggleLoadout(index);
+                
+                let classes = `glass-panel lens-card rounded-xl overflow-hidden flex flex-col h-full border border-gray-800 relative group cursor-pointer ${isSelected ? 'border-sony-orange' : ''}`;
+                if(compatStatus === 'incompatible') classes += ' state-incompatible';
+                if(compatStatus === 'crop') classes += ' state-crop';
+
+                card.className = classes;
+
+                // Warning Overlay
+                let overlay = '';
+                if(warningMsg) {
+                    const color = compatStatus === 'incompatible' ? 'bg-red-600' : 'bg-yellow-600 text-black';
+                    overlay = `<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 ${color} px-3 py-1 font-bold text-xs rounded shadow-lg whitespace-nowrap">${warningMsg}</div>`;
+                }
+                
+                const toolbar = `
+                    <div class="absolute top-0 left-0 w-full p-3 flex justify-between items-start z-20 pointer-events-none">
+                         <label class="flex items-center space-x-2 bg-black/50 p-1 rounded pointer-events-auto">
+                            <input type="checkbox" onchange="event.stopPropagation(); toggleLoadout(${index})" ${isSelected ? 'checked' : ''} ${compatStatus === 'incompatible' ? 'disabled' : ''}
+                                   class="form-checkbox h-4 w-4 text-sony-orange rounded bg-black border-gray-600 focus:ring-offset-black custom-checkbox">
+                        </label>
+                        <button onclick="event.stopPropagation(); editItem(${index})" class="pointer-events-auto text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-pencil"></i></button>
+                    </div>
+                `;
+
+                // NEW SPEC GRID (4 COLUMNS)
+                const specs = `
+                    <div class="mt-auto grid grid-cols-4 gap-1 text-[10px] text-gray-400 border-t border-gray-800 pt-2 font-mono text-center">
+                         <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-camera-retro mb-1 text-sony-orange"></i>${item.mount || '-'}</div>
+                         <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-shutter-image mb-1 text-gray-600"></i>${item.aperture}</div>
+                         <div class="flex flex-col items-center border-r border-gray-800"><i class="fa-solid fa-mountain-sun mb-1 text-gray-600"></i>${item.minFocus || '-'}</div>
+                         <div class="flex flex-col items-center"><i class="fa-solid fa-magnifying-glass-plus mb-1 text-gray-600"></i>${item.magnification || '-'}</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800/50">
+                        <span class="text-[10px] text-gray-500 font-mono">${item.weight}</span>
+                        <a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-sony-orange hover:text-white flex items-center gap-1 font-bold z-20">SPECS <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    </div>
+                `;
+
+                card.innerHTML = `
+                    ${toolbar}
+                    ${overlay}
+                    <div class="h-36 bg-white/5 p-4 flex items-center justify-center relative">
+                        <img src="${item.image}" class="max-h-full max-w-full object-contain filter drop-shadow-lg group-hover:scale-110 transition duration-500">
+                    </div>
+                    <div class="p-3 flex-grow flex flex-col">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[9px] font-bold text-sony-orange font-mono uppercase tracking-widest">${item.type}</span>
+                            <span class="text-[9px] text-gray-500 border border-gray-700 px-1 rounded">${item.filterSize || 'N/A'}</span>
+                        </div>
+                        <h3 class="text-xs font-bold text-white mb-2 leading-tight">${item.name}</h3>
+                        ${specs}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            renderFilters(); // Re-render filters to update visual state if needed, mostly for first run or updates
+            updateLoadoutBar();
+        }
+
+        // --- STATS & MOUNT FILTER ---
+        function renderStats() {
+            const total = gearList.reduce((acc, i) => acc + (Number(i.price) || 0), 0);
+            document.getElementById('total-value').innerText = '$' + total.toLocaleString();
+            document.getElementById('item-count').innerText = gearList.length;
+            document.getElementById('avg-value').innerText = '$' + Math.floor(total/gearList.length || 0);
+        }
+
+        // --- HUD LOGIC (Standard) ---
+        function drawFOV() {
+            const canvas = document.getElementById('fovCanvas');
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            const w = rect.width;
+            const h = rect.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const activeIndices = Array.from(loadoutSet);
+            const hasSelection = activeIndices.length > 0;
+            const itemsToDraw = hasSelection 
+                ? activeIndices.map((idx, i) => ({ item: gearList[idx], color: COLOR_PALETTE[i % COLOR_PALETTE.length] }))
+                : gearList.map(item => ({ item, color: 'rgba(255, 255, 255, 0.15)' }));
+
+            const baseMm = 16; 
+            itemsToDraw.forEach(({ item, color }) => {
+                if(item.type === 'Body') return;
+                let minMm, maxMm;
+                const clean = item.focalLength.replace('mm','').trim();
+                if(clean.includes('-')) { [minMm, maxMm] = clean.split('-').map(Number); } 
+                else { minMm = maxMm = Number(clean); }
+
+                const drawRect = (mm) => {
+                    if(mm < baseMm) return; 
+                    const scale = baseMm / mm; 
+                    const rw = w * scale; const rh = h * scale;
+                    const rx = (w - rw) / 2; const ry = (h - rh) / 2;
+                    ctx.beginPath(); ctx.rect(rx, ry, rw, rh);
+                    ctx.strokeStyle = color; ctx.lineWidth = hasSelection ? 2 : 1; ctx.stroke();
+                    if (hasSelection) {
+                        ctx.fillStyle = color; ctx.font = 'bold 10px JetBrains Mono';
+                        ctx.fillText(`${mm}mm`, rx + 5, ry + 12);
+                    }
+                };
+                drawRect(minMm);
+                if(minMm !== maxMm) drawRect(maxMm);
+            });
+        }
+        window.addEventListener('resize', drawFOV);
+
+        // --- INTERACTIONS ---
+        function toggleLoadout(index) {
+            if(loadoutSet.has(index)) loadoutSet.delete(index);
+            else loadoutSet.add(index);
+            renderGrid();
+            drawFOV();
+        }
+
+        function updateLoadoutBar() {
+            const bar = document.getElementById('loadout-bar');
+            if(loadoutSet.size > 0) bar.classList.remove('translate-y-full');
+            else bar.classList.add('translate-y-full');
+
+            let totalWeight = 0;
+            loadoutSet.forEach(idx => {
+                const wStr = gearList[idx].weight || "0g";
+                const wInt = parseInt(wStr.replace('g','').trim()) || 0;
+                totalWeight += wInt;
+            });
+            document.getElementById('loadout-weight').innerText = totalWeight;
+        }
+
+        function clearLoadout() {
+            loadoutSet.clear();
+            renderGrid();
+            drawFOV();
+        }
+
+        // --- EXIF ---
+        function dragOverHandler(ev) { ev.preventDefault(); document.getElementById('drop-zone').classList.remove('hidden'); document.getElementById('drop-zone').classList.add('flex'); }
+        document.addEventListener('dragleave', (e) => { if (e.relatedTarget === null) { document.getElementById('drop-zone').classList.add('hidden'); document.getElementById('drop-zone').classList.remove('flex'); } });
+        function dropHandler(ev) {
+            ev.preventDefault(); document.getElementById('drop-zone').classList.add('hidden'); document.getElementById('drop-zone').classList.remove('flex');
+            if (ev.dataTransfer.items && ev.dataTransfer.items[0].kind === 'file') analyzePhoto(ev.dataTransfer.items[0].getAsFile());
+        }
+        function analyzePhoto(file) {
+            EXIF.getData(file, function() {
+                const focalLength = EXIF.getTag(this, "FocalLength");
+                const model = EXIF.getTag(this, "Model");
+                if(!focalLength) { alert("No EXIF data found."); return; }
+                const flVal = Math.round(focalLength);
+                alert(`Detected: ${model || 'Camera'} at ${flVal}mm.`);
+                gearList.forEach((gear, index) => {
+                    if(gear.type === 'Body') return;
+                    let isMatch = false;
+                    const clean = gear.focalLength.replace('mm','');
+                    if(clean.includes('-')) { const [min, max] = clean.split('-').map(Number); if(flVal >= min && flVal <= max) isMatch = true; } 
+                    else { if(Math.abs(Number(clean) - flVal) < 2) isMatch = true; }
+                    if(isMatch) { const card = document.getElementById(`card-${index}`); card.classList.add('active-pulse'); setTimeout(() => card.classList.remove('active-pulse'), 5000); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                });
+            });
+        }
+
+        // --- MODAL & JSON EDITOR ---
+        const modal = document.getElementById('gear-modal');
+        let isJsonMode = false;
+
+        function openModal() { 
+            modal.classList.remove('hidden'); 
+            // Reset to Form View by default for new opens, or keep state? Better to reset to Form to avoid confusion.
+            if(isJsonMode) toggleJsonMode(); 
+            else {
+                // If opening fresh (Add), ensure form is cleared if not handled by caller.
+                // editItem calls populate, but 'openModal()' button calls it directly.
+                // We should clear form if id is empty? 
+                // The 'openModal' button in nav just opens it. We should clear it there.
+                // Actually, let's check if it was called by editItem via checking if edit-id is set? 
+                // No, keep it simple. The user clicks +, fields might be old.
+                // We'll add a clearForm() helper.
+                if(!document.getElementById('edit-id').value) clearForm();
+            }
+        }
+        function closeModal() { modal.classList.add('hidden'); document.getElementById('edit-id').value = ''; }
+
+        function clearForm() {
+             document.getElementById('gear-form').reset();
+             document.getElementById('edit-id').value = '';
+             document.getElementById('modal-title').innerText = 'ADD_COMPONENT';
+        }
+
+        // Override the onclick in HTML for the + button to call openModalClean? 
+        // Or just update openModal to not clear if edit-id is set?
+        // The + button calls openModal(). editItem calls openModal().
+        // If I click +, I want a clean form. If I click Edit, I want data.
+        // Let's make a wrapper for the + button.
+        // actually, let's just make openModal check.
+        
+        // WAIT: The previous code didn't clear on openModal(). It relied on the fact that inputs aren't cleared? 
+        // Actually, usually one manually clears.
+        // Let's stick to the requested task: JSON Editor. 
+        // I will add the toggle logic.
+        
+        function toggleJsonMode() {
+            const formView = document.getElementById('form-view');
+            const jsonView = document.getElementById('json-view');
+            const btn = document.getElementById('json-toggle-btn');
+            const jsonInput = document.getElementById('json-input');
+
+            if (!isJsonMode) {
+                // Switch to JSON
+                const obj = getFormData();
+                // Format nicely
+                jsonInput.value = JSON.stringify(obj, null, 4);
+                formView.classList.add('hidden');
+                jsonView.classList.remove('hidden');
+                btn.innerHTML = '<i class="fa-solid fa-list"></i> FORM VIEW';
+                isJsonMode = true;
+            } else {
+                // Switch to Form
+                try {
+                    const val = jsonInput.value.trim();
+                    if(val) {
+                        const obj = JSON.parse(val);
+                        populateForm(obj);
+                    }
+                    formView.classList.remove('hidden');
+                    jsonView.classList.add('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-code"></i> JSON MODE';
+                    isJsonMode = false;
+                } catch (e) {
+                    alert("Invalid JSON. Please fix errors before switching back.");
+                }
+            }
+        }
+
+        function getFormData() {
+            return {
+                name: document.getElementById('inp-name').value,
+                type: document.getElementById('inp-type').value,
+                mount: document.getElementById('inp-mount').value,
+                sensorFormat: document.getElementById('inp-format').value,
+                weight: document.getElementById('inp-weight').value,
+                focalLength: document.getElementById('inp-focal').value,
+                aperture: document.getElementById('inp-aperture').value,
+                minFocus: document.getElementById('inp-minfocus').value,
+                magnification: document.getElementById('inp-mag').value,
+                filterSize: document.getElementById('inp-filter').value,
+                price: Number(document.getElementById('inp-price').value),
+                image: document.getElementById('inp-image').value,
+                link: document.getElementById('inp-link').value,
+            };
+        }
+
+        function populateForm(data) {
+            document.getElementById('inp-name').value = data.name || '';
+            document.getElementById('inp-type').value = data.type || 'Prime';
+            document.getElementById('inp-mount').value = data.mount || '';
+            document.getElementById('inp-format').value = data.sensorFormat || 'Full Frame';
+            document.getElementById('inp-weight').value = data.weight || '';
+            document.getElementById('inp-focal').value = data.focalLength || '';
+            document.getElementById('inp-aperture').value = data.aperture || '';
+            document.getElementById('inp-minfocus').value = data.minFocus || '';
+            document.getElementById('inp-mag').value = data.magnification || '';
+            document.getElementById('inp-filter').value = data.filterSize || '';
+            document.getElementById('inp-price').value = data.price || '';
+            document.getElementById('inp-image').value = data.image || '';
+            document.getElementById('inp-link').value = data.link || '';
+        }
+
+        document.getElementById('gear-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            let finalData = {};
+            if(isJsonMode) {
+                try {
+                    finalData = JSON.parse(document.getElementById('json-input').value);
+                } catch(e) {
+                    alert("Invalid JSON");
+                    return;
+                }
+            } else {
+                finalData = getFormData();
+            }
+
+            const editId = document.getElementById('edit-id').value;
+            if(editId !== '') {
+                 finalData.id = gearList[editId].id; 
+                 gearList[editId] = finalData;
+            } else {
+                finalData.id = Date.now();
+                gearList.push(finalData);
+            }
+            
+            saveToLocal();
+            closeModal();
+        });
+
+        function editItem(index) {
+            const i = gearList[index];
+            document.getElementById('edit-id').value = index;
+            document.getElementById('modal-title').innerText = 'EDIT_COMPONENT';
+            populateForm(i);
+            openModal();
+        }
+        
+        // Hook up the nav + button to clear form
+        // We can't easily replace the HTML onclick, so we can modify openModal to check context or just add a listener.
+        // But wait, the nav button calls 'openModal()'.
+        // I'll modify openModal to check if the title implies edit, or just rely on editItem setting the title.
+        // Actually, let's just let openModal be simple.
+        // The issue is if I edit, close, then click +, the fields remain.
+        // I should fix that.
+        
+        const originalOpenModal = openModal;
+        // Redefine openModal to handle clearing? 
+        // Easier: I'll just expose a function 'openAddModal' and update the HTML? 
+        // No, I can't update the HTML nav easily without a large replace.
+        // I'll just check inside openModal.
+        
+        // Actually, 'editItem' sets the ID. 'openModal' is called by the + button.
+        // If I click +, 'edit-id' might still be set from previous edit? 
+        // closeModal clears 'edit-id'. So we are good.
+        // But we need to clear the inputs.
+        
+        // Let's update openModal in the replaced block above to clear inputs if edit-id is empty.
+
+
+        // --- AI ASSISTANT LOGIC ---
+        function toggleAI() { document.getElementById('ai-chat-window').classList.toggle('hidden'); }
+        
+        function toggleKeyInput() {
+            const container = document.getElementById('ai-key-container');
+            container.classList.toggle('hidden');
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value;
+            if(key) {
+                localStorage.setItem(API_KEY_STORAGE, key);
+                updateApiStatus();
+                toggleKeyInput();
+            }
+        }
+
+        function updateApiStatus() {
+            const key = localStorage.getItem(API_KEY_STORAGE);
+            const ind = document.getElementById('api-status-indicator');
+            const badge = document.getElementById('ai-badge');
+            if(key) {
+                ind.classList.remove('bg-red-500'); ind.classList.add('bg-green-500'); ind.title = "API Key Active";
+                badge.classList.add('hidden');
+                document.getElementById('api-key-input').value = key;
+            } else {
+                ind.classList.remove('bg-green-500'); ind.classList.add('bg-red-500'); ind.title = "API Key Missing";
+                badge.classList.remove('hidden');
+                document.getElementById('ai-key-container').classList.remove('hidden');
+            }
+        }
+
+        // Run on load
+        document.addEventListener('DOMContentLoaded', updateApiStatus);
+
+        function triggerAction(action) {
+            const input = document.getElementById('user-prompt');
+            if(action === 'rate') {
+                input.value = "Rate my current kit setup and identify any major gaps.";
+                askGemini();
+            } else if(action === 'recommend') {
+                input.value = "Recommend a lens for [SCENARIO] considering my current gear.";
+                input.focus();
+                // Select the placeholder text for easy replacement
+                input.setSelectionRange(18, 28);
+            } else if(action === 'add') {
+                input.value = "Generate JSON for: [PRODUCT NAME]";
+                input.focus();
+                input.setSelectionRange(19, 33);
+            }
+        }
+
+        async function askGemini() {
+            const input = document.getElementById('user-prompt');
+            const history = document.getElementById('chat-history');
+            const apiKey = localStorage.getItem(API_KEY_STORAGE);
+            const prompt = input.value;
+            
+            if (!prompt) return;
+            if (!apiKey) { alert("Please enter your Gemini API Key first."); toggleKeyInput(); return; }
+
+            // User Message
+            const userDiv = document.createElement('div');
+            userDiv.className = "bg-sony-orange text-white p-2 rounded-lg ml-auto max-w-[80%] mb-2 text-xs shadow-md";
+            userDiv.innerText = prompt;
+            history.appendChild(userDiv);
+            
+            input.value = ''; 
+            history.scrollTop = history.scrollHeight;
+
+            // Loading State
+            const loader = document.getElementById('ai-loading');
+            loader.classList.remove('hidden');
+
+            // Context Construction
+            const isJsonRequest = prompt.toLowerCase().includes('generate json');
+            let systemContext = `You are an expert photography assistant. My Gear: ${JSON.stringify(gearList)}.`;
+            
+            if(isJsonRequest) {
+                systemContext += `
+                TASK: Generate a JSON object for the requested camera gear matching this schema exactly:
+                {
+                    "id": (use Date.now() placeholder),
+                    "name": "Full Name",
+                    "type": "Body" or "Prime" or "Zoom",
+                    "mount": "Mount Name",
+                    "sensorFormat": "Full Frame" or "APS-C",
+                    "weight": "000g",
+                    "filterSize": "00mm" or "N/A",
+                    "price": 0 (number),
+                    "image": "URL to a high quality product image",
+                    "link": "Official product page URL",
+                    "aperture": "f/2.8" (for lenses),
+                    "focalLength": "24-70mm" (for lenses),
+                    "minFocus": "0.xxm",
+                    "magnification": "0.xx"
+                }
+                RESPONSE FORMAT: Return ONLY the raw JSON object. No markdown formatting, no backticks.`;
+            } else {
+                systemContext += ` Answer concisely in markdown. Use bolding for emphasis.`;
+            }
+
+            const fullPrompt = `${systemContext} \n\nUser Question: ${prompt}`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
+                });
+                
+                const data = await response.json();
+                loader.classList.add('hidden');
+
+                if(data.error) { throw new Error(data.error.message); }
+
+                let aiText = data.candidates[0].content.parts[0].text;
+
+                // AI Message Container
+                const aiDiv = document.createElement('div');
+                aiDiv.className = "bg-gray-800 p-3 rounded-lg mr-auto max-w-[90%] border border-gray-700 text-gray-200 shadow-md text-xs overflow-hidden";
+                history.appendChild(aiDiv);
+
+                if(isJsonRequest) {
+                    // Clean up JSON if it has markdown code blocks
+                    aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    aiDiv.innerHTML = `<pre class="whitespace-pre-wrap font-mono text-[10px] text-green-400 overflow-x-auto">${aiText}</pre>
+                    <button onclick='addGeneratedItem(${aiText})' class="mt-2 w-full bg-gray-700 hover:bg-green-600 text-white text-[10px] py-1 rounded font-mono transition"><i class="fa-solid fa-plus"></i> ADD TO LIBRARY</button>`;
+                } else {
+                    // Stream Text Effect
+                    await streamText(aiDiv, aiText);
+                }
+
+            } catch (error) { 
+                loader.classList.add('hidden');
+                history.innerHTML += `<div class="text-red-500 text-xs bg-red-900/20 p-2 rounded border border-red-900">Error: ${error.message}</div>`; 
+            }
+            history.scrollTop = history.scrollHeight;
+        }
+
+        // Pseudo-streaming effect
+        async function streamText(element, text) {
+            const words = text.split(' ');
+            let currentText = '';
+            for (let i = 0; i < words.length; i++) {
+                currentText += words[i] + ' ';
+                // Parse markdown on every chunk? Expensive but clean. 
+                // Better: Render raw until done? No, user wants "ChatGPT style".
+                // Compromise: standard chatGPT style actually streams tokens. 
+                // We will just append words and re-render markdown periodically or at end?
+                // Re-rendering marked on every word causes jitter.
+                // Simple approach: Update text content, then final render.
+                // Or: Use a temporary span?
+                
+                // Let's just do the simple "typing" of HTML content after parsing marked ONCE, 
+                // then revealing it? No, that's slow.
+                
+                // Best compromise for vanilla JS without complex stream parser:
+                // 1. Parse full markdown to HTML.
+                // 2. "Type" the HTML tags? Hard.
+                // 3. Just type text.
+                
+                // Actually, let's just type raw characters if it's short, but for Markdown it's tricky.
+                // Let's just dump the text for now to be fast, then render markdown at the end.
+                // element.innerText = currentText; 
+                
+                // BETTER: Just use marked() at the end. The user said "don't do this if it adds extra time".
+                // The typing effect ADDS time to read.
+                // Let's try a very fast word injection.
+                
+                // Wait, if I render markdown at the end, it jumps.
+                // Let's just render the full markdown immediately for now to ensure it's snappy,
+                // The "loading" spinner covers the "thinking" time.
+                // "Don't do this if it adds extra time" -> I will skip the fake typing for complex Markdown to avoid layout shift.
+                // But I will do it for simple text.
+            }
+            // Fallback to immediate render for better UX with Markdown
+             element.innerHTML = `<div class="prose prose-invert prose-sm max-w-none">${marked.parse(text)}</div>`;
+        }
+
+        function addGeneratedItem(itemData) {
+            // Assign a real ID and add
+            itemData.id = Date.now();
+            gearList.push(itemData);
+            saveToLocal();
+            renderApp();
+            const history = document.getElementById('chat-history');
+            history.innerHTML += `<div class="text-green-500 text-[10px] text-center my-2">Successfully added ${itemData.name}</div>`;
+            history.scrollTop = history.scrollHeight;
+        }
+
+    </script>
+</body>
+</html>
