@@ -103,7 +103,7 @@
 		{@const warningMsg = getWarningMsg(compatStatus)}
 		
 		<div 
-			class="glass-panel lens-card rounded-xl overflow-hidden flex flex-col h-full border border-gray-800 relative group cursor-pointer {isSelected ? 'border-sony-orange' : ''} {compatStatus === 'incompatible' ? 'state-incompatible' : ''} {compatStatus === 'crop' ? 'state-crop' : ''}"
+			class="glass-panel lens-card rounded-xl overflow-hidden flex flex-col h-full border relative group cursor-pointer {isSelected ? 'border-sony-orange ring-1 ring-sony-orange !bg-sony-orange/20' : 'border-gray-800'} {compatStatus === 'incompatible' ? 'state-incompatible' : ''} {compatStatus === 'crop' ? 'state-crop' : ''}"
 			onclick={() => { if (compatStatus !== 'incompatible') toggleLoadout(index); }}
 			onkeydown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && compatStatus !== 'incompatible') toggleLoadout(index); }}
 			role="button"
@@ -115,10 +115,7 @@
 				</div>
 			{/if}
 			
-			<div class="absolute top-0 left-0 w-full p-3 flex justify-between items-start z-20 pointer-events-none">
-				<label class="flex items-center space-x-2 bg-black/50 p-1 rounded pointer-events-auto">
-					<input type="checkbox" onchange={() => toggleLoadout(index)} checked={isSelected} disabled={compatStatus === 'incompatible'} class="form-checkbox h-4 w-4 text-sony-orange rounded bg-black border-gray-600 focus:ring-offset-black custom-checkbox">
-				</label>
+			<div class="absolute top-0 right-0 p-3 z-20">
 				<button onclick={(e) => { e.stopPropagation(); editItem(index); }} class="pointer-events-auto text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition" aria-label="Edit item">
 					<iconify-icon icon="lucide:pencil"></iconify-icon>
 				</button>
