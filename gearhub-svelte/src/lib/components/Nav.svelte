@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { gearList, saveToLocal } from '$lib/stores';
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
+	import type { GearItem } from '$lib/stores';
+	import SyncModal from '$lib/components/SyncModal.svelte';
 
 	let { openModal } = $props<{ openModal: () => void }>();
 	let isLightMode = $state(false);
+	
+	let showSyncModal = $state(false);
+	let serverItems = $state<GearItem[]>([]);
 
 	onMount(() => {
 		const savedTheme = localStorage.getItem('theme');
@@ -24,9 +30,25 @@
 		}
 	}
 
-	function clearCache() {
-		localStorage.removeItem('my_lens_db_v5');
-		location.reload();
+	async function handleSync() {
+		try {
+			const response = await fetch(`${base}/lenses.json`);
+			if (response.ok) {
+				serverItems = await response.json();
+				showSyncModal = true;
+			} else {
+				alert("Failed to fetch server preset.");
+			}
+		} catch (e) {
+			alert("Error fetching server preset: " + e);
+		}
+	}
+
+	function confirmSync() {
+		gearList.set(serverItems);
+		saveToLocal(serverItems);
+		showSyncModal = false;
+		window.location.reload(); // Optional: Reload to ensure clean state, or just let reactivity handle it
 	}
 
 	function downloadJSON() {
@@ -59,9 +81,17 @@
 			<button onclick={toggleTheme} class="text-gray-500 hover:text-white transition" title="Toggle Theme">
 				<iconify-icon icon={isLightMode ? "lucide:moon" : "lucide:sun"}></iconify-icon>
 			</button>
-			<button onclick={clearCache} class="text-xs text-red-500 hover:text-red-400 border border-red-900/50 px-2 py-1 rounded" title="Reload File"><iconify-icon icon="lucide:rotate-cw"></iconify-icon></button>
+			<button onclick={handleSync} class="text-xs text-red-500 hover:text-red-400 border border-red-900/50 px-2 py-1 rounded" title="Sync/Reset to Preset"><iconify-icon icon="lucide:rotate-cw"></iconify-icon></button>
 			<button onclick={openModal} class="hover:text-sony-orange transition" aria-label="Add gear"><iconify-icon icon="lucide:plus"></iconify-icon></button>
 			<button onclick={downloadJSON} class="hover:text-sony-orange transition" aria-label="Download JSON"><iconify-icon icon="lucide:download"></iconify-icon></button>
 		</div>
 	</div>
 </nav>
+
+<SyncModal 
+	bind:show={showSyncModal} 
+	localItems={$gearList} 
+	serverItems={serverItems} 
+	onConfirm={confirmSync} 
+	onCancel={() => showSyncModal = false} 
+/>

@@ -10,6 +10,7 @@
 	import AIChat from '$lib/components/AIChat.svelte';
 	import * as Tabs from "$lib/components/ui/tabs";
 	import EXIF from 'exif-js';
+	import { base } from '$app/paths';
 
 	let showModal = $state(false);
 	let showAI = $state(false);
@@ -119,7 +120,7 @@
 			gearList.set(localData);
 		} else {
 			try {
-				const response = await fetch('/lenses.json');
+				const response = await fetch(`${base}/lenses.json`);
 				if (response.ok) {
 					const data = await response.json();
 					gearList.set(data);
