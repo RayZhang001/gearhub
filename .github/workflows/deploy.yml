@@ -2,9 +2,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ feature/sveltekit-migration ]
+    branches: [ main ]
   pull_request:
-    branches: [ feature/sveltekit-migration ]
+    branches: [ main ]
 
 jobs:
   build:
